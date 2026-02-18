@@ -78,8 +78,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 /* DEPTH CHART */
 .depth-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.depth-col{display:flex;flex-direction:column;gap:6px}
-.depth-pos-hdr{text-align:center;font-weight:800;font-size:.95rem;letter-spacing:1px;color:#555;padding:.6rem;background:transparent;margin-bottom:4px}
+.depth-pos-hdr{text-align:center;font-weight:800;font-size:.95rem;letter-spacing:1px;color:#555;padding:.6rem;background:transparent}
 .dc{
   background:white;border:1px solid #e0e4ea;border-radius:10px;
   padding:.5rem .3rem;text-align:center;
@@ -100,9 +99,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dc .badge.b-inj{background:rgba(244,67,54,.12);color:#ef5350}
 .dc .badge.b-tw{background:rgba(255,138,101,.12);color:#e65100}
 .dc .badge.b-10d{background:rgba(255,193,7,.12);color:#f57f17}
-.d-sep{height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin:4px 0}
-.d-spacer{min-height:0}
-.d-empty{min-height:30px}
+.d-sep{height:3px;background:rgba(255,255,255,.15);border-radius:2px;align-self:center}
+.d-spacer{min-height:105px}
+.d-empty{min-height:105px}
 
 /* MISC */
 .table-wrap{overflow-x:auto}
@@ -321,7 +320,6 @@ function renderDepth(D){
   const POS=['PG','SG','SF','PF','C'];
   const injSet=new Set(D.injuries.filter(i=>i.status==='Out'||i.status==='Doubtful').map(i=>norm(i.player)));
   const twSet=new Set(),tdSet=new Set();
-  // Check both contracts notes AND roster-level notes
   for(const p of D.contracts){const n=norm(p.name),nt=(p.notes||'').toLowerCase();if(nt.includes('two-way'))twSet.add(n);if(nt.includes('10-day')||nt.includes('10 day'))tdSet.add(n);}
 
   const cols={PG:[],SG:[],SF:[],PF:[],C:[]};
@@ -329,15 +327,17 @@ function renderDepth(D){
   else{for(const[nm,info]of Object.entries(D.roster)){const p=info.pos.toUpperCase();if(cols[p])cols[p].push(nm);else if(p==='G')cols.SG.push(nm);else if(p==='F')cols.SF.push(nm);}}
 
   const mx=Math.max(...POS.map(p=>cols[p].length),1);
+  // Render as flat grid: header row, then data rows
   let h='<div class="depth-grid">';
-  for(const pos of POS){
-    h+='<div class="depth-col">';
-    h+=`<div class="depth-pos-hdr">${pos}</div>`;
-    for(let i=0;i<mx;i++){
+  // Header row
+  for(const pos of POS) h+=`<div class="depth-pos-hdr">${pos}</div>`;
+  // Data rows
+  for(let i=0;i<mx;i++){
+    for(const pos of POS){
       const e=cols[pos][i]||null;
       if(!e){h+='<div class="d-empty"></div>';continue;}
       if(e==='__SEPARATOR__'){h+='<div class="d-sep"></div>';continue;}
-      if(e==='__SPACER__'){h+='<div class="d-spacer"></div>';continue;}
+      if(e==='__SPACER__'){h+='<div class="d-empty"></div>';continue;}
       const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
       const hs=D.hs[e],sal=D.salMap[nk]||0;
       const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
@@ -346,7 +346,6 @@ function renderDepth(D){
       let badges='';if(isI)badges+='<span class="badge b-inj">INJ</span> ';if(isT)badges+='<span class="badge b-tw">2W</span> ';if(is10)badges+='<span class="badge b-10d">10D</span> ';
       h+=`<div class="${cl}">${img}<div class="dn">${e}</div>${sal?`<div class="ds ${sc}">${fS(sal)}</div>`:''}${badges}</div>`;
     }
-    h+='</div>';
   }
   h+='</div>';
   h+=`<div class="link-row"><a href="https://aderoa.github.io/DepthCharts/?team=${TEAM}" target="_blank">Full Depth Charts →</a></div>`;return h;
