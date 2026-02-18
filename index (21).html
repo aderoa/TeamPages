@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Team Pages — HoopsMatic</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#e0e0e0;min-height:100vh;padding:1.5rem}
+a{color:#64b5f6;text-decoration:none}a:hover{text-decoration:underline}
+
+/* LANDING */
+.page-header{text-align:center;padding:2rem 0 2.5rem}
+.page-header h1{font-size:2rem;font-weight:800;color:white}
+.page-header .sub{color:#8892b0;font-size:.85rem;margin-top:.35rem}
+.page-header .links{margin-top:.75rem;font-size:.75rem}
+.page-header .links a{margin:0 .5rem}
+.conf-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8892b0;padding:.5rem 0;margin-top:1rem;margin-bottom:.5rem;border-bottom:1px solid rgba(255,255,255,.06)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.team-card{display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;transition:all .2s;cursor:pointer}
+.team-card:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.team-card img{width:40px;height:40px;object-fit:contain}
+.team-card .name{font-weight:700;color:white;font-size:.82rem}
+.team-card .abbr{color:#8892b0;font-size:.65rem;font-weight:600}
+
+/* TEAM HEADER */
+.team-header{display:flex;align-items:center;gap:1.25rem;padding:1.5rem 2rem;margin-bottom:2rem;background:rgba(255,255,255,.04);border-radius:16px;border:1px solid rgba(255,255,255,.06)}
+.team-header img{width:72px;height:72px;object-fit:contain}
+.team-header .info h1{font-size:1.75rem;font-weight:800;color:white}
+.team-header .info .sub{font-size:.85rem;color:#8892b0;margin-top:2px}
+.team-header .nav{margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+.team-header .nav a{padding:.4rem .8rem;border-radius:8px;font-size:.75rem;font-weight:600;background:rgba(255,255,255,.06);color:#8892b0;transition:all .2s}
+.team-header .nav a:hover{background:rgba(255,255,255,.12);color:white;text-decoration:none}
+
+/* SECTIONS */
+.section{margin-bottom:2rem;background:rgba(255,255,255,.03);border-radius:14px;border:1px solid rgba(255,255,255,.06);overflow:hidden}
+.section-title{display:flex;align-items:center;gap:.6rem;padding:1rem 1.25rem;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.06);font-size:1rem;font-weight:700;color:white;cursor:pointer;user-select:none}
+.section-title:hover{background:rgba(255,255,255,.06)}
+.section-title .count{font-size:.7rem;color:#8892b0;font-weight:500;margin-left:auto}
+.section-body{padding:1rem 1.25rem}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;font-size:.72rem}
+th{text-align:left;padding:.5rem .4rem;color:#8892b0;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
+td{padding:.45rem .4rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;white-space:nowrap}
+tr:hover td{background:rgba(255,255,255,.02)}
+.pc{display:flex;align-items:center;gap:.5rem}
+.pc img{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#2a2a4a}
+.pc .ini{width:28px;height:28px;border-radius:50%;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:700;color:#8892b0}
+.pc .nm{font-weight:600;color:white}
+
+/* SALARY */
+.sal{display:inline-block;padding:2px 6px;border-radius:4px;font-weight:600;font-size:.68rem}
+.sal.g{background:rgba(76,175,80,.15);color:#66bb6a}
+.sal.pg{background:rgba(255,193,7,.12);color:#ffc107}
+.sal.ng{background:rgba(244,67,54,.12);color:#ef5350}
+.sal.to{background:rgba(33,150,243,.12);color:#42a5f5}
+.sal.po{background:rgba(156,39,176,.12);color:#ab47bc}
+.sal.tw{background:rgba(255,138,101,.12);color:#ff8a65}
+.sal-sub{display:block;font-size:.5rem;margin-top:1px;font-weight:600}
+.sal-sub.po-lbl{color:#ab47bc}.sal-sub.to-lbl{color:#42a5f5}.sal-sub.pg-lbl{color:#ffc107}.sal-sub.ng-lbl{color:#ef5350}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:.6rem;font-weight:600}
+.tag-opt-to{background:rgba(33,150,243,.12);color:#42a5f5}
+.tag-opt-po{background:rgba(156,39,176,.12);color:#ab47bc}
+.tag-exc{background:rgba(255,255,255,.06);color:#8892b0}
+.inj-out{background:rgba(244,67,54,.15);color:#ef5350}
+.inj-doubtful{background:rgba(255,152,0,.15);color:#ffa726}
+.inj-questionable{background:rgba(255,193,7,.12);color:#ffc107}
+.inj-probable{background:rgba(76,175,80,.12);color:#66bb6a}
+
+/* DRAFT */
+.draft-card{display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:.5rem}
+.draft-pick-num{font-size:1.5rem;font-weight:800;color:#ffc107;min-width:2.5rem;text-align:center}
+.draft-pick-num.second{color:#8892b0}
+.draft-info .prospect{font-weight:700;color:white;font-size:.9rem}
+.draft-info .meta{color:#8892b0;font-size:.72rem;margin-top:2px}
+
+/* DEPTH CHART */
+.depth-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.depth-col{display:flex;flex-direction:column;gap:6px}
+.depth-pos-hdr{text-align:center;font-weight:700;font-size:.85rem;color:#1a1a2e;padding:.5rem;background:white;border-bottom:3px solid #4f6df5;border-radius:8px 8px 0 0}
+.dc{
+  background:white;border:2px solid #e0e4ea;border-radius:10px;
+  padding:.5rem .3rem;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:105px;transition:all .2s;
+}
+.dc.starter{border-color:#4f6df5;box-shadow:0 2px 8px rgba(79,109,245,.15)}
+.dc.injured{opacity:.5;border-color:#ef5350;border-style:dashed}
+.dc.twoway{border-color:#ff8a65;border-style:dashed}
+.dc.tenday{border-color:#ffc107;border-style:dotted}
+.dc .hs{width:60px;height:60px;border-radius:50%;object-fit:cover;background:#e8ecf1;margin-bottom:4px}
+.dc .hs-ini{width:60px;height:60px;border-radius:50%;background:#e8ecf1;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:#8892b0;margin-bottom:4px}
+.dc .dn{font-weight:600;color:#1a1a2e;font-size:.7rem;line-height:1.2}
+.dc .ds{font-weight:700;font-size:.68rem;margin-top:2px}
+.dc .ds.high{color:#e65100}.dc .ds.mid{color:#2e7d32}.dc .ds.low{color:#757575}
+.dc .badge{font-size:.48rem;font-weight:700;padding:1px 4px;border-radius:3px;margin-top:2px;display:inline-block}
+.dc .badge.b-inj{background:rgba(244,67,54,.12);color:#ef5350}
+.dc .badge.b-tw{background:rgba(255,138,101,.12);color:#e65100}
+.dc .badge.b-10d{background:rgba(255,193,7,.12);color:#f57f17}
+.d-sep{height:4px;background:#bbb;border-radius:2px;margin:2px 0}
+.d-spacer{min-height:80px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:8px}
+.d-empty{min-height:30px}
+
+/* MISC */
+.table-wrap{overflow-x:auto}
+.loading{text-align:center;padding:3rem;color:#616161}
+.loading .spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,.1);border-top-color:#64b5f6;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:.5rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-msg{color:#616161;font-style:italic;padding:.75rem 0;font-size:.8rem}
+.link-row{margin-top:.75rem;font-size:.72rem;color:#8892b0}
+.footer{text-align:center;padding:2rem 0 1rem;font-size:.7rem;color:#444}.footer a{color:#64b5f6}
+.dbg{margin-top:1.5rem;padding:.75rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:.6rem;color:#666;font-family:monospace;line-height:1.6;word-break:break-all}
+.dbg .ok{color:#66bb6a}.dbg .fail{color:#ef5350}
+
+@media(max-width:768px){
+  body{padding:.75rem}
+  .team-header{flex-wrap:wrap;padding:1rem;gap:.75rem}.team-header .nav{margin-left:0;width:100%}
+  .depth-grid{grid-template-columns:repeat(5,minmax(68px,1fr));gap:3px}
+  .dc{min-height:70px;padding:.3rem}.dc .hs,.dc .hs-ini{width:40px;height:40px;font-size:.65rem}
+  .section-body{padding:.75rem}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading"><div class="spinner"></div><br>Loading...</div></div>
+<script>
+const NBA_TEAMS={ATL:{name:'Atlanta Hawks',id:1610612737,conf:'East'},BOS:{name:'Boston Celtics',id:1610612738,conf:'East'},BKN:{name:'Brooklyn Nets',id:1610612751,conf:'East'},CHA:{name:'Charlotte Hornets',id:1610612766,conf:'East'},CHI:{name:'Chicago Bulls',id:1610612741,conf:'East'},CLE:{name:'Cleveland Cavaliers',id:1610612739,conf:'East'},DAL:{name:'Dallas Mavericks',id:1610612742,conf:'West'},DEN:{name:'Denver Nuggets',id:1610612743,conf:'West'},DET:{name:'Detroit Pistons',id:1610612765,conf:'East'},GSW:{name:'Golden State Warriors',id:1610612744,conf:'West'},HOU:{name:'Houston Rockets',id:1610612745,conf:'West'},IND:{name:'Indiana Pacers',id:1610612754,conf:'East'},LAC:{name:'LA Clippers',id:1610612746,conf:'West'},LAL:{name:'Los Angeles Lakers',id:1610612747,conf:'West'},MEM:{name:'Memphis Grizzlies',id:1610612763,conf:'West'},MIA:{name:'Miami Heat',id:1610612748,conf:'East'},MIL:{name:'Milwaukee Bucks',id:1610612749,conf:'East'},MIN:{name:'Minnesota Timberwolves',id:1610612750,conf:'West'},NOP:{name:'New Orleans Pelicans',id:1610612740,conf:'West'},NYK:{name:'New York Knicks',id:1610612752,conf:'East'},OKC:{name:'Oklahoma City Thunder',id:1610612760,conf:'West'},ORL:{name:'Orlando Magic',id:1610612753,conf:'East'},PHI:{name:'Philadelphia 76ers',id:1610612755,conf:'East'},PHX:{name:'Phoenix Suns',id:1610612756,conf:'West'},POR:{name:'Portland Trail Blazers',id:1610612757,conf:'West'},SAC:{name:'Sacramento Kings',id:1610612758,conf:'West'},SAS:{name:'San Antonio Spurs',id:1610612759,conf:'West'},TOR:{name:'Toronto Raptors',id:1610612761,conf:'East'},UTA:{name:'Utah Jazz',id:1610612762,conf:'West'},WAS:{name:'Washington Wizards',id:1610612764,conf:'East'}};
+const TEAM_ALIASES={'Atlanta':'ATL','Boston':'BOS','Brooklyn':'BKN','Charlotte':'CHA','Chicago':'CHI','Cleveland':'CLE','Dallas':'DAL','Denver':'DEN','Detroit':'DET','Golden State':'GSW','Houston':'HOU','Indiana':'IND','LA Clippers':'LAC','L.A. Clippers':'LAC','Los Angeles Clippers':'LAC','LA Lakers':'LAL','L.A. Lakers':'LAL','Los Angeles Lakers':'LAL','Los Angeles':'LAL','Memphis':'MEM','Miami':'MIA','Milwaukee':'MIL','Minnesota':'MIN','New Orleans':'NOP','New York':'NYK','Oklahoma City':'OKC','Orlando':'ORL','Philadelphia':'PHI','Phoenix':'PHX','Portland':'POR','Sacramento':'SAC','San Antonio':'SAS','Toronto':'TOR','Utah':'UTA','Washington':'WAS','Hawks':'ATL','Celtics':'BOS','Nets':'BKN','Hornets':'CHA','Bulls':'CHI','Cavaliers':'CLE','Cavs':'CLE','Mavericks':'DAL','Mavs':'DAL','Nuggets':'DEN','Pistons':'DET','Warriors':'GSW','Rockets':'HOU','Pacers':'IND','Clippers':'LAC','Lakers':'LAL','Grizzlies':'MEM','Heat':'MIA','Bucks':'MIL','Timberwolves':'MIN','Wolves':'MIN','Pelicans':'NOP','Knicks':'NYK','Thunder':'OKC','Magic':'ORL','76ers':'PHI','Sixers':'PHI','Suns':'PHX','Trail Blazers':'POR','Blazers':'POR','Kings':'SAC','Spurs':'SAS','Raptors':'TOR','Jazz':'UTA','Wizards':'WAS'};
+function resolveTeam(t){if(!t)return '';const u=t.trim().toUpperCase();if(NBA_TEAMS[u])return u;return TEAM_ALIASES[t.trim()]||u;}
+function teamLogo(a){const t=NBA_TEAMS[a];return t?`https://cdn.nba.com/logos/nba/${t.id}/primary/L/logo.svg`:'';}
+
+const TEAM=(new URLSearchParams(window.location.search).get('team')||'').toUpperCase();
+if(TEAM&&NBA_TEAMS[TEAM])initTeamPage();
+else if(TEAM)document.getElementById('app').innerHTML='<div class="loading">Team not found. <a href="?">← Back</a></div>';
+else initLanding();
+
+// ============================================================
+function initLanding(){
+  document.title='NBA Team Pages — HoopsMatic';
+  const C={East:['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK','ORL','PHI','TOR','WAS'],West:['DAL','DEN','GSW','HOU','LAC','LAL','MEM','MIN','NOP','OKC','PHX','POR','SAC','SAS','UTA']};
+  let h=`<div class="page-header"><h1>🏀 NBA Team Pages</h1><div class="sub">Contracts · Depth Charts · Draft Projections · Injury Reports</div><div class="links"><a href="https://hoopsmatic.com" target="_blank">Trade Machine</a> <a href="https://aderoa.github.io/Contracts/" target="_blank">Contracts DB</a> <a href="https://aderoa.github.io/DepthCharts/" target="_blank">Depth Charts</a> <a href="https://aderoa.github.io/Injuries/" target="_blank">Injuries</a></div></div>`;
+  for(const[conf,list]of Object.entries(C)){h+=`<div class="conf-label">${conf}ern Conference</div><div class="grid">`;for(const a of list){const t=NBA_TEAMS[a];h+=`<a href="?team=${a}" class="team-card"><img src="${teamLogo(a)}" alt="${a}"><div><div class="name">${t.name}</div><div class="abbr">${a}</div></div></a>`;}h+='</div>';}
+  h+='<div class="footer">Powered by <a href="https://hoopsmatic.com" target="_blank">HoopsMatic</a></div>';
+  document.getElementById('app').innerHTML=h;
+}
+
+// ============================================================
+function initTeamPage(){
+const teamInfo=NBA_TEAMS[TEAM];
+document.title=`${teamInfo.name} — HoopsMatic`;
+const SID='2PACX-1vTETfPTYMjVB0ttSfU4_TN2-FaX-mGOhIHMBONDfbnIVbjZih9GS9CJJ5LsDUMGig';
+const CURL=`https://docs.google.com/spreadsheets/d/e/${SID}/pub?gid=1649473047&single=true&output=csv`;
+const RURL=`https://docs.google.com/spreadsheets/d/e/${SID}/pub?gid=0&single=true&output=csv`;
+const DURL=`https://docs.google.com/spreadsheets/d/e/${SID}/pub?gid=1908498377&single=true&output=csv`;
+const IURL='https://aderoa.github.io/Injuries/injuries.json';
+const OURL='https://aderoa.github.io/DepthCharts/order.json';
+const YC=[{l:"'25-26",s:7,c:8,t:9},{l:"'26-27",s:10,c:11,t:12},{l:"'27-28",s:13,c:14,t:15},{l:"'28-29",s:16,c:17,t:18},{l:"'29-30",s:19,c:20,t:21},{l:"'30-31",s:22,c:23,t:24}];
+
+function parseCSV(text){const rows=[];let cur='',inQ=false,row=[];for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(inQ&&text[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===','&&!inQ){row.push(cur);cur='';}else if((c==='\n'||c==='\r')&&!inQ){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cur);cur='';rows.push(row);row=[];}else cur+=c;}if(cur||row.length){row.push(cur);rows.push(row);}return rows;}
+function pS(s){if(!s)return 0;const n=parseInt(String(s).replace(/[$,]/g,''));return isNaN(n)?0:n;}
+function fS(n){if(!n)return '';if(n>=1e6)return '$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return '$'+(n/1e3).toFixed(0)+'K';return '$'+n;}
+function nS(s){if(!s)return '';const u=s.trim().toUpperCase();if(u==='GUARANTEED'||u==='G')return 'GUARANTEED';if(u.includes('PARTIAL'))return 'PARTIAL G';if(u==='NOT G'||u==='NON-G'||u==='NOT GUARANTEED')return 'NOT G';if(u==='TEAM OPT'||u==='TEAM OPTION')return 'TEAM OPT';if(u==='PLAYER OPT'||u==='PLAYER OPTION')return 'PLAYER OPT';if(u==='TWO-WAY')return 'TWO-WAY';if(u==='10-DAY')return '10-DAY';return u;}
+function ini(n){return(n||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase().replace(/\s+(jr|sr|ii|iii|iv|v)$/,'');
+const log=[];
+function dbg(ok,msg){log.push({ok,msg});console.log('[TP]',ok?'✓':'✗',msg);}
+
+async function safeFetch(url,label,isJson){
+  try{const r=await fetch(url);if(!r.ok){dbg(false,`${label}: HTTP ${r.status} ${r.statusText}`);return null;}
+  const d=isJson?await r.json():await r.text();
+  dbg(true,`${label}: OK${isJson?'':' ('+d.length+' chars)'}`);return d;
+  }catch(e){dbg(false,`${label}: ${e.message}`);return null;}}
+
+async function loadAll(){
+  const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{}};
+  const[cTxt,rTxt,dTxt,iJson,oJson]=await Promise.all([
+    safeFetch(CURL,'Contracts',false),safeFetch(RURL,'Roster',false),
+    safeFetch(DURL,'Draft',false),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
+    safeFetch(OURL+'?t='+Date.now(),'DepthOrder',true)]);
+
+  if(cTxt){const rows=parseCSV(cTxt);
+    // Log first row team values for debugging
+    const sampleTeams=[];
+    for(let i=1;i<Math.min(rows.length,6);i++){sampleTeams.push((rows[i][2]||'').trim());}
+    dbg(true,`Contracts parsed: ${rows.length} rows. Sample teams col[2]: [${sampleTeams.join(', ')}]`);
+    for(let i=1;i<rows.length;i++){const r=rows[i],nm=(r[0]||'').trim(),tm=resolveTeam((r[2]||'').trim());
+    if(!nm||tm!==TEAM)continue;
+    const yrs=YC.map(y=>({sal:pS(r[y.s]),ch:pS(r[y.c]),st:nS(r[y.t])}));
+    const notes=(r[32]||'').trim();
+    D.contracts.push({name:nm,yrs,totG:pS(r[28]),option:(r[26]||'').trim(),end:(r[27]||'').trim(),exc:(r[31]||'').trim(),notes});
+    D.salMap[norm(nm)]=yrs[0]?.sal||0;D.notesMap[norm(nm)]=notes;}
+    D.contracts.sort((a,b)=>(b.yrs[0]?.sal||0)-(a.yrs[0]?.sal||0));
+    dbg(true,`Contracts: ${D.contracts.length} for ${TEAM}`);}
+
+  if(rTxt){const rows=parseCSV(rTxt);
+    if(rows.length>1){const hdr=rows[0].map(h=>(h||'').trim().toUpperCase());
+    const pi=hdr.indexOf('PLAYER'),hi=hdr.indexOf('HEADSHOT'),ti=hdr.indexOf('TEAM'),si=hdr.indexOf('SALARY');
+    const bmi=hdr.indexOf('POS_DC')>=0?hdr.indexOf('POS_DC'):64;
+    dbg(true,`Roster headers: PLAYER=${pi} HEADSHOT=${hi} TEAM=${ti} SALARY=${si} POS_DC=${bmi}`);
+    for(let j=1;j<rows.length;j++){const r=rows[j],nm=pi>=0?(r[pi]||'').trim():'',rt=ti>=0?resolveTeam((r[ti]||'').trim()):'';
+    if(!nm)continue;const hs=hi>=0?(r[hi]||'').trim():'';if(hs)D.hs[nm]=hs;
+    if(rt===TEAM){D.roster[nm]={pos:bmi<r.length?(r[bmi]||'').trim():''};if(!D.salMap[norm(nm)]&&si>=0)D.salMap[norm(nm)]=pS(r[si]);}}
+    dbg(true,`Roster: ${Object.keys(D.roster).length} players, ${Object.keys(D.hs).length} headshots`);}}
+
+  if(dTxt){const rows=parseCSV(dTxt);
+    dbg(true,`Draft parsed: ${rows.length} rows. Header: [${(rows[0]||[]).slice(0,3).join(', ')}...col15=${(rows[0]||[])[15]||'?'}, col16=${(rows[0]||[])[16]||'?'}]`);
+    for(let i=1;i<rows.length;i++){const r=rows[i],pr=(r[0]||'').trim(),ag=parseInt((r[1]||'').trim())||0;
+    const pp=parseInt((r[15]||'').trim())||0,pt=resolveTeam((r[16]||'').trim());
+    if(!pr||!pp||pt!==TEAM)continue;D.draft.push({prospect:pr,aggRank:ag,pickPos:pp,round:pp<=30?1:2});}
+    D.draft.sort((a,b)=>a.pickPos-b.pickPos);dbg(true,`Draft: ${D.draft.length} picks`);}
+
+  if(iJson&&Array.isArray(iJson)){
+    const lat={};for(const e of iJson)lat[e.player]=e;
+    const tp=new Set([...D.contracts.map(c=>norm(c.name)),...Object.keys(D.roster).map(norm)]);
+    for(const[p,e]of Object.entries(lat)){if(e.status==='Available')continue;if(tp.has(norm(p)))D.injuries.push(e);}
+    D.injuries.sort((a,b)=>{const o={'Out':0,'Doubtful':1,'Questionable':2,'Probable':3};return(o[a.status]??9)-(o[b.status]??9);});
+    dbg(true,`Injuries: ${D.injuries.length} for ${TEAM}`);}
+
+  if(oJson){D.depthOrder=oJson[TEAM]||null;dbg(D.depthOrder?true:false,`Depth: ${D.depthOrder?'loaded':'not found for '+TEAM}`);}
+  return D;
+}
+
+function renderHeader(){
+  const all=Object.keys(NBA_TEAMS).sort(),idx=all.indexOf(TEAM);
+  const prev=idx>0?all[idx-1]:all[all.length-1],next=idx<all.length-1?all[idx+1]:all[0];
+  return `<div class="team-header"><img src="${teamLogo(TEAM)}" alt="${teamInfo.name}"><div class="info"><h1>${teamInfo.name}</h1><div class="sub">${teamInfo.conf}ern Conference</div></div><div class="nav"><a href="?team=${prev}">← ${prev}</a><a href="?">All Teams</a><a href="?team=${next}">${next} →</a></div></div>`;
+}
+
+function salCell(y){if(!y||(!y.sal&&!y.st))return'<span style="color:#444">—</span>';const cls={'GUARANTEED':'g','PARTIAL G':'pg','NOT G':'ng','TEAM OPT':'to','PLAYER OPT':'po','TWO-WAY':'tw','10-DAY':'tw'}[y.st]||'g';let h=`<span class="sal ${cls}">${fS(y.sal)}</span>`;if(y.st==='PARTIAL G'&&y.ch&&y.ch!==y.sal)h+=`<span class="sal-sub pg-lbl">G: ${fS(y.ch)}</span>`;else if(y.st==='NOT G')h+=`<span class="sal-sub ng-lbl">G: ${y.ch?fS(y.ch):'$0'}</span>`;else if(y.st==='PLAYER OPT')h+=`<span class="sal-sub po-lbl">PO</span>`;else if(y.st==='TEAM OPT')h+=`<span class="sal-sub to-lbl">TO</span>`;return h;}
+function optTag(o){return o==='TEAM OPT'?'<span class="tag tag-opt-to">Team Opt</span>':o==='PLAYER OPT'?'<span class="tag tag-opt-po">Player Opt</span>':'';}
+function shortExc(e){return{'Bird Exception':'Bird','Early Bird Exception':'Early Bird','Non-Bird Exception':'Non-Bird','Mid-Level Exception':'MLE','Taxpayer Mid-Level Exception':'Tax MLE','Room Mid-Level Exception':'Room MLE','Biannual Exception':'BAE','Minimum Salary Exception':'Minimum','Rookie Exception':'Rookie','Second Round Exception':'2nd Rnd'}[e]||e||'';}
+
+function renderContracts(D){
+  if(!D.contracts.length)return'<div class="empty-msg">No contract data available</div>';
+  let h='<div class="table-wrap"><table><thead><tr><th>Player</th>';
+  YC.forEach(y=>{h+=`<th>${y.l}</th>`;});
+  h+='<th>End</th><th>Option</th><th>Total G</th><th>Exc</th><th>Notes</th></tr></thead><tbody>';
+  for(const p of D.contracts){const hs=D.hs[p.name];const hsH=hs?`<img src="${hs}" onerror="this.outerHTML='<span class=\\'ini\\'>${ini(p.name)}</span>'">`:`<span class="ini">${ini(p.name)}</span>`;h+='<tr>';h+=`<td><div class="pc">${hsH}<span class="nm">${p.name}</span></div></td>`;for(let i=0;i<YC.length;i++)h+=`<td>${salCell(p.yrs[i])}</td>`;h+=`<td style="font-weight:700">${p.end||''}</td><td>${optTag(p.option)}</td><td style="font-weight:700">${fS(p.totG)}</td>`;h+=`<td>${p.exc?`<span class="tag tag-exc" title="${p.exc}">${shortExc(p.exc)}</span>`:''}</td>`;const notes=(p.notes||'').replace(/No[- ]?Trade\s*Clause/gi,'').replace(/NTC/g,'').replace(/[·;,\s]*$/,'').replace(/^[·;,\s]*/,'').trim();h+=`<td>${notes?`<span class="tag" style="background:rgba(255,255,255,.05);color:#8892b0" title="${notes}">${notes.length>20?notes.slice(0,18)+'…':notes}</span>`:''}</td></tr>`;}
+  h+='</tbody></table></div>';
+  const tot=D.contracts.reduce((s,p)=>s+(p.yrs[0]?.sal||0),0);
+  h+=`<div class="link-row">Total '25-26: <strong style="color:white">${fS(tot)}</strong> · ${D.contracts.length} players · <a href="https://aderoa.github.io/Contracts/" target="_blank">Full Contracts DB →</a></div>`;return h;
+}
+
+function renderDepth(D){
+  const POS=['PG','SG','SF','PF','C'];
+  const injSet=new Set(D.injuries.filter(i=>i.status==='Out'||i.status==='Doubtful').map(i=>norm(i.player)));
+  const twSet=new Set(),tdSet=new Set();
+  // Check both contracts notes AND roster-level notes
+  for(const p of D.contracts){const n=norm(p.name),nt=(p.notes||'').toLowerCase();if(nt.includes('two-way'))twSet.add(n);if(nt.includes('10-day')||nt.includes('10 day'))tdSet.add(n);}
+
+  const cols={PG:[],SG:[],SF:[],PF:[],C:[]};
+  if(D.depthOrder){for(const p of POS)if(D.depthOrder[p])cols[p]=D.depthOrder[p];}
+  else{for(const[nm,info]of Object.entries(D.roster)){const p=info.pos.toUpperCase();if(cols[p])cols[p].push(nm);else if(p==='G')cols.SG.push(nm);else if(p==='F')cols.SF.push(nm);}}
+
+  const mx=Math.max(...POS.map(p=>cols[p].length),1);
+  let h='<div class="depth-grid">';
+  for(const pos of POS){
+    h+='<div class="depth-col">';
+    h+=`<div class="depth-pos-hdr">${pos}</div>`;
+    for(let i=0;i<mx;i++){
+      const e=cols[pos][i]||null;
+      if(!e){h+='<div class="d-empty"></div>';continue;}
+      if(e==='__SEPARATOR__'){h+='<div class="d-sep"></div>';continue;}
+      if(e==='__SPACER__'){h+='<div class="d-spacer"></div>';continue;}
+      const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
+      const hs=D.hs[e],sal=D.salMap[nk]||0;
+      const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
+      let cl='dc';if(i===0)cl+=' starter';if(isI)cl+=' injured';else if(isT)cl+=' twoway';else if(is10)cl+=' tenday';
+      const img=hs?`<img class="hs" src="${hs}" onerror="this.outerHTML='<div class=\\'hs-ini\\'>${ini(e)}</div>'">`:`<div class="hs-ini">${ini(e)}</div>`;
+      let badges='';if(isI)badges+='<span class="badge b-inj">INJ</span> ';if(isT)badges+='<span class="badge b-tw">2W</span> ';if(is10)badges+='<span class="badge b-10d">10D</span> ';
+      h+=`<div class="${cl}">${img}<div class="dn">${e}</div>${sal?`<div class="ds ${sc}">${fS(sal)}</div>`:''}${badges}</div>`;
+    }
+    h+='</div>';
+  }
+  h+='</div>';
+  h+=`<div class="link-row"><a href="https://aderoa.github.io/DepthCharts/?team=${TEAM}" target="_blank">Full Depth Charts →</a></div>`;return h;
+}
+
+function renderDraft(D){
+  if(!D.draft.length)return'<div class="empty-msg">No projected picks for this team</div>';
+  return D.draft.map(d=>`<div class="draft-card"><div class="draft-pick-num${d.round===2?' second':''}">#${d.pickPos}</div><div class="draft-info"><div class="prospect">${d.prospect}</div><div class="meta">Round ${d.round} · Aggregate rank: #${d.aggRank}</div></div></div>`).join('');
+}
+
+function renderInjuries(D){
+  if(!D.injuries.length)return'<div class="empty-msg">No players currently on the injury report 🎉</div>';
+  let h='<table><thead><tr><th>Player</th><th>Status</th><th>Injury</th><th>Date</th></tr></thead><tbody>';
+  for(const inj of D.injuries){const cls={'Out':'inj-out','Doubtful':'inj-doubtful','Questionable':'inj-questionable','Probable':'inj-probable'}[inj.status]||'';const hs=D.hs[inj.player];const hsH=hs?`<img src="${hs}" onerror="this.outerHTML='<span class=\\'ini\\'>${ini(inj.player)}</span>'">`:`<span class="ini">${ini(inj.player)}</span>`;const dt=inj.date?new Date(inj.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';h+=`<tr><td><div class="pc">${hsH}<span class="nm">${inj.player}</span></div></td><td><span class="tag ${cls}">${inj.status}</span></td><td style="color:#8892b0">${inj.injury||''}</td><td style="color:#616161">${dt}</td></tr>`;}
+  h+='</tbody></table>';h+=`<div class="link-row"><a href="https://aderoa.github.io/Injuries/" target="_blank">Full Injury Report →</a></div>`;return h;
+}
+
+function renderDebug(){
+  let h='<div class="dbg"><strong>Debug Log</strong><br>';
+  for(const l of log)h+=`<span class="${l.ok?'ok':'fail'}">${l.ok?'✓':'✗'} ${l.msg}</span><br>`;
+  h+='</div>';return h;
+}
+
+async function run(){
+  try{const D=await loadAll();let h=renderHeader();
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>📋</span> Contracts <span class="count">${D.contracts.length} players</span></div><div class="section-body">${renderContracts(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🏀</span> Rotation / Depth Chart <span class="count">${Object.keys(D.roster).length} players</span></div><div class="section-body">${renderDepth(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🎯</span> Draft Projection <span class="count">${D.draft.length} pick${D.draft.length!==1?'s':''}</span></div><div class="section-body">${renderDraft(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🏥</span> Injury Report <span class="count">${D.injuries.length} player${D.injuries.length!==1?'s':''}</span></div><div class="section-body">${renderInjuries(D)}</div></div>`;
+  h+=`<div class="footer">Powered by <a href="https://hoopsmatic.com" target="_blank">HoopsMatic</a> · <a href="https://aderoa.github.io/Contracts/" target="_blank">Contracts</a> · <a href="https://aderoa.github.io/DepthCharts/" target="_blank">Depth Charts</a> · <a href="https://aderoa.github.io/Injuries/" target="_blank">Injuries</a></div>`;
+  h+=renderDebug();
+  document.getElementById('app').innerHTML=h;
+  }catch(err){document.getElementById('app').innerHTML=`<div class="loading">Failed: ${err.message}<br><a href="?">← Back</a></div>${renderDebug()}`;}
+}
+run();
+}
+</script>
+</body>
+</html>
