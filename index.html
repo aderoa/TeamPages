@@ -196,7 +196,7 @@ async function fetchCSV(gid,label){
 }
 
 async function loadAll(){
-  const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{},draftRights:[],deadCap:[]};
+  const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{},draftRights:[],deadCap:[],capSituation:{}};
   const[cTxt,rTxt,_unused,iJson,oJson]=await Promise.all([
     fetchCSV('1649473047','Contracts'),fetchCSV('0','Roster'),
     Promise.resolve(null),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
@@ -241,6 +241,73 @@ async function loadAll(){
       if(yrs.some(v=>v>0))D.deadCap.push({name:dcPlayer,yrs});}
     D.deadCap.sort((a,b)=>(b.yrs[0]||0)-(a.yrs[0]||0));
     dbg(true,`Dead Cap: ${D.deadCap.length} for ${TEAM}`);
+    // Salary Cap Situation: AJ-BG (cols 35-58)
+    // Detect headers and find team row for each year
+    const CAP_FIELDS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
+    // Log headers in range for debugging
+    const capHdr=rows[0].map(h=>(h||'').trim().toUpperCase());
+    const hdrSample=[];
+    for(let c=35;c<=58;c++)hdrSample.push(`[${c}]=${capHdr[c]||''}`);
+    dbg(true,`Cap headers 35-58: ${hdrSample.join(' ')}`);
+    // Find team columns in range 35-58
+    let capGroups=[];
+    for(let c=35;c<=58;c++){
+      if(capHdr[c]==='TEAM'||capHdr[c]==='TM'){
+        // This is a group start; collect following field columns
+        const group={teamCol:c,label:'',fields:{}};
+        // Check if there's a year label nearby
+        for(let cc=c-2;cc<=c+12&&cc<capHdr.length;cc++){
+          const h=capHdr[cc];
+          if(h.includes("'25-26")||h.includes('2025-26')||h==='2026')group.label="'25-26";
+          if(h.includes("'26-27")||h.includes('2026-27')||h==='2027')group.label="'26-27";
+        }
+        // Map fields by header name
+        for(let cc=c+1;cc<Math.min(c+15,capHdr.length);cc++){
+          for(const f of CAP_FIELDS){
+            if(capHdr[cc].includes(f)||capHdr[cc]===f){group.fields[f]=cc;break;}
+          }
+        }
+        capGroups.push(group);
+      }
+    }
+    // If no TEAM headers found, try detecting by known column positions
+    if(!capGroups.length){
+      // AJ=35..AT=45 might be year 1, AU=46..BD=55 year 2
+      capGroups=[
+        {teamCol:35,label:"'25-26",fields:{}},
+        {teamCol:47,label:"'26-27",fields:{}}
+      ];
+      // Assign fields sequentially after team col
+      for(const g of capGroups){
+        CAP_FIELDS.forEach((f,i)=>{g.fields[f]=g.teamCol+1+i;});
+      }
+    }
+    dbg(true,`Cap groups: ${capGroups.length}, labels=[${capGroups.map(g=>g.label).join(',')}]`);
+    // Find team row and extract values for each group
+    for(const g of capGroups){
+      for(let j=1;j<rows.length;j++){
+        const r=rows[j];
+        const rowTeam=resolveTeam((r[g.teamCol]||'').trim());
+        if(rowTeam===TEAM){
+          const capData={};
+          for(const f of CAP_FIELDS){
+            const ci=g.fields[f];
+            if(ci!==undefined){
+              const val=(r[ci]||'').trim();
+              capData[f]=pS(val)||val; // try number, fallback to string
+            } else capData[f]=0;
+          }
+          D.capSituation[g.label||("yr"+capGroups.indexOf(g))]=capData;
+          break;
+        }
+      }
+    }
+    dbg(true,`Cap Situation: ${Object.keys(D.capSituation).length} years for ${TEAM}`);
+    // Log sample cap data
+    for(const[yr,cap] of Object.entries(D.capSituation)){
+      const s=CAP_FIELDS.map(f=>`${f}=${typeof cap[f]==='number'?fS(cap[f]):cap[f]}`).join(', ');
+      dbg(true,`Cap ${yr}: ${s}`);
+    }
     }}
   // DRAFT - try multiple GIDs since sheet may have been reorganized
   const DRAFT_GIDS=['965849547','1908498377','1889032294'];
@@ -408,6 +475,40 @@ function renderInjuries(D){
   h+='</tbody></table>';h+=`<div class="link-row"><a href="https://aderoa.github.io/Injuries/" target="_blank">Full Injury Report →</a></div>`;return h;
 }
 
+function renderCapSituation(D){
+  const years=Object.keys(D.capSituation);
+  if(!years.length)return'<div class="empty-msg">No salary cap data available</div>';
+  const FIELDS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
+  const MONEY_FIELDS=new Set(['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','GUARANTEED','NOT G']);
+  let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">';
+  for(const yr of years){
+    const cap=D.capSituation[yr];
+    h+=`<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:1rem">`;
+    h+=`<div style="font-weight:700;font-size:.9rem;color:white;margin-bottom:.75rem;text-align:center">${yr}</div>`;
+    for(const f of FIELDS){
+      const val=cap[f];
+      const isMoney=MONEY_FIELDS.has(f);
+      const isNeg=typeof val==='number'&&val<0;
+      const isSpace=f==='CAP SPACE';
+      let display='—';
+      if(typeof val==='number'&&val!==0){
+        display=fS(Math.abs(val));
+        if(isNeg)display='-'+display;
+      } else if(typeof val==='string'&&val)display=val;
+      let color='white';
+      if(isSpace&&typeof val==='number'){color=val>=0?'#4caf50':'#ef5350';}
+      else if(f==='TAX'||f==='1ST APRON'||f==='2ND APRON'){color=typeof val==='number'&&val<0?'#ef5350':'#4caf50';}
+      h+=`<div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.78rem">`;
+      h+=`<span style="color:rgba(255,255,255,.7)">${f}</span>`;
+      h+=`<span style="color:${color};font-weight:600">${display}</span>`;
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  }
+  h+='</div>';
+  return h;
+}
+
 function renderDebug(){
   let h='<div class="dbg"><strong>Debug Log</strong><br>';
   for(const l of log)h+=`<span class="${l.ok?'ok':'fail'}">${l.ok?'✓':'✗'} ${l.msg}</span><br>`;
@@ -422,6 +523,7 @@ async function run(){
   h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🎯</span> Draft Projection <span class="count">${D.draft.length} pick${D.draft.length!==1?'s':''}</span></div><div class="section-body">${renderDraft(D)}</div></div>`;
   h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>📝</span> Draft Rights <span class="count">${D.draftRights.length} player${D.draftRights.length!==1?'s':''}</span></div><div class="section-body">${renderDraftRights(D)}</div></div>`;
   h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>💀</span> Dead Cap <span class="count">${D.deadCap.length} charge${D.deadCap.length!==1?'s':''}</span></div><div class="section-body">${renderDeadCap(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>💰</span> Salary Cap Situation <span class="count">${Object.keys(D.capSituation).length} season${Object.keys(D.capSituation).length!==1?'s':''}</span></div><div class="section-body">${renderCapSituation(D)}</div></div>`;
   h+=`<div class="footer">Powered by <a href="https://hoopsmatic.com" target="_blank">HoopsMatic</a> · <a href="https://aderoa.github.io/Contracts/" target="_blank">Contracts</a> · <a href="https://aderoa.github.io/DepthCharts/" target="_blank">Depth Charts</a> · <a href="https://aderoa.github.io/Injuries/" target="_blank">Injuries</a></div>`;
   h+=renderDebug();
   document.getElementById('app').innerHTML=h;
