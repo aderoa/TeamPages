@@ -37,12 +37,12 @@ a{color:#64b5f6;text-decoration:none}a:hover{text-decoration:underline}
 .section{margin-bottom:2rem;background:rgba(255,255,255,.03);border-radius:14px;border:1px solid rgba(255,255,255,.06);overflow:hidden}
 .section-title{display:flex;align-items:center;gap:.6rem;padding:1rem 1.25rem;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.06);font-size:1rem;font-weight:700;color:white;cursor:pointer;user-select:none}
 .section-title:hover{background:rgba(255,255,255,.06)}
-.section-title .count{font-size:.7rem;color:#8892b0;font-weight:500;margin-left:auto}
+.section-title .count{font-size:.7rem;color:rgba(255,255,255,.6);font-weight:500;margin-left:auto}
 .section-body{padding:1rem 1.25rem}
 
 /* TABLES */
 table{width:100%;border-collapse:collapse;font-size:.72rem}
-th{text-align:left;padding:.5rem .4rem;color:#8892b0;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
+th{text-align:left;padding:.5rem .4rem;color:rgba(255,255,255,.85);font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
 td{padding:.45rem .4rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;white-space:nowrap}
 tr:hover td{background:rgba(255,255,255,.02)}
 .pc{display:flex;align-items:center;gap:.5rem}
@@ -109,9 +109,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .loading{text-align:center;padding:3rem;color:#616161}
 .loading .spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,.1);border-top-color:#64b5f6;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:.5rem}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty-msg{color:#616161;font-style:italic;padding:.75rem 0;font-size:.8rem}
-.link-row{margin-top:.75rem;font-size:.72rem;color:#8892b0}
-.footer{text-align:center;padding:2rem 0 1rem;font-size:.7rem;color:#444}.footer a{color:#64b5f6}
+.empty-msg{color:#999;font-style:italic;padding:.75rem 0;font-size:.8rem}
+.link-row{margin-top:.75rem;font-size:.72rem;color:#bbb}
+.footer{text-align:center;padding:2rem 0 1rem;font-size:.7rem;color:#888}.footer a{color:#64b5f6}
 .dbg{margin-top:1.5rem;padding:.75rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:.6rem;color:#666;font-family:monospace;line-height:1.6;word-break:break-all}
 .dbg .ok{color:#66bb6a}.dbg .fail{color:#ef5350}
 
@@ -230,11 +230,16 @@ async function loadAll(){
       const drName=(r[71]||'').trim(),drYear=(r[72]||'').trim(),drTeam=resolveTeam((r[73]||'').trim());
       if(drName&&drTeam===TEAM)D.draftRights.push({name:drName,year:drYear,team:drTeam});}
     dbg(true,`Draft Rights: ${D.draftRights.length} for ${TEAM}`);
-    // Dead Cap: DP=119 (team), DQ=120 (player), DR=121 (salary)
+    // Dead Cap: DP=119 (team), DQ=120 (player), DR-DW=121-126 (yearly salaries)
+    const DC_YEARS=[
+      {l:"'25-26",i:121},{l:"'26-27",i:122},{l:"'27-28",i:123},
+      {l:"'28-29",i:124},{l:"'29-30",i:125},{l:"'30-31",i:126}];
     for(let j=1;j<rows.length;j++){const r=rows[j];
-      const dcTeam=resolveTeam((r[119]||'').trim()),dcPlayer=(r[120]||'').trim(),dcSal=pS(r[121]);
-      if(dcPlayer&&dcTeam===TEAM&&dcSal>0)D.deadCap.push({name:dcPlayer,salary:dcSal});}
-    D.deadCap.sort((a,b)=>b.salary-a.salary);
+      const dcTeam=resolveTeam((r[119]||'').trim()),dcPlayer=(r[120]||'').trim();
+      if(!dcPlayer||dcTeam!==TEAM)continue;
+      const yrs=DC_YEARS.map(y=>pS(r[y.i]));
+      if(yrs.some(v=>v>0))D.deadCap.push({name:dcPlayer,yrs});}
+    D.deadCap.sort((a,b)=>(b.yrs[0]||0)-(a.yrs[0]||0));
     dbg(true,`Dead Cap: ${D.deadCap.length} for ${TEAM}`);
     }}
   // DRAFT - try multiple GIDs since sheet may have been reorganized
@@ -368,7 +373,7 @@ function renderDepth(D){
 
 function renderDraft(D){
   if(!D.draft.length)return'<div class="empty-msg">No projected picks for this team</div>';
-  return D.draft.map(d=>`<div class="draft-card"><div class="draft-pick-num${d.round===2?' second':''}">#${d.pickPos}</div><div class="draft-info"><div class="prospect">${d.prospect}</div><div class="meta">Round ${d.round} · Aggregate rank: #${d.aggRank}</div></div></div>`).join('');
+  return D.draft.map(d=>`<div class="draft-card"><div class="draft-pick-num${d.round===2?' second':''}">#${d.pickPos}</div><div class="draft-info"><div class="prospect">${d.prospect}</div></div></div>`).join('');
 }
 
 function renderDraftRights(D){
@@ -381,18 +386,25 @@ function renderDraftRights(D){
 
 function renderDeadCap(D){
   if(!D.deadCap.length)return'<div class="empty-msg">No dead cap charges</div>';
-  const tot=D.deadCap.reduce((s,d)=>s+d.salary,0);
-  let h='<table><thead><tr><th>Player</th><th>Dead Cap</th></tr></thead><tbody>';
+  const DC_LABELS=["'25-26","'26-27","'27-28","'28-29","'29-30","'30-31"];
+  let h='<div class="table-wrap"><table><thead><tr><th>Player</th>';
+  DC_LABELS.forEach(l=>{h+=`<th>${l}</th>`;});
+  h+='</tr></thead><tbody>';
   for(const dc of D.deadCap){
-    h+=`<tr><td style="font-weight:600;color:white">${dc.name}</td><td><span class="sal ng">${fS(dc.salary)}</span></td></tr>`;}
-  h+='</tbody></table>';
-  h+=`<div class="link-row">Total dead cap: <strong style="color:#ef5350">${fS(tot)}</strong></div>`;return h;
+    h+=`<tr><td style="font-weight:600;color:white">${dc.name}</td>`;
+    for(let i=0;i<dc.yrs.length;i++){
+      h+=`<td>${dc.yrs[i]?`<span class="sal ng">${fS(dc.yrs[i])}</span>`:'<span style="color:#555">—</span>'}</td>`;}
+    h+='</tr>';}
+  h+='</tbody></table></div>';
+  const tot=D.deadCap.reduce((s,d)=>s+(d.yrs[0]||0),0);
+  if(tot)h+=`<div class="link-row">Total '25-26 dead cap: <strong style="color:#ef5350">${fS(tot)}</strong></div>`;
+  return h;
 }
 
 function renderInjuries(D){
   if(!D.injuries.length)return'<div class="empty-msg">No players currently on the injury report 🎉</div>';
   let h='<table><thead><tr><th>Player</th><th>Status</th><th>Injury</th><th>Date</th></tr></thead><tbody>';
-  for(const inj of D.injuries){const cls={'Out':'inj-out','Doubtful':'inj-doubtful','Questionable':'inj-questionable','Probable':'inj-probable'}[inj.status]||'';const hs=D.hs[inj.player];const hsH=hs?`<img src="${hs}" onerror="this.outerHTML='<span class=\\'ini\\'>${ini(inj.player)}</span>'">`:`<span class="ini">${ini(inj.player)}</span>`;const dt=inj.date?new Date(inj.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';h+=`<tr><td><div class="pc">${hsH}<span class="nm">${inj.player}</span></div></td><td><span class="tag ${cls}">${inj.status}</span></td><td style="color:#8892b0">${inj.injury||''}</td><td style="color:#616161">${dt}</td></tr>`;}
+  for(const inj of D.injuries){const cls={'Out':'inj-out','Doubtful':'inj-doubtful','Questionable':'inj-questionable','Probable':'inj-probable'}[inj.status]||'';const hs=D.hs[inj.player];const hsH=hs?`<img src="${hs}" onerror="this.outerHTML='<span class=\\'ini\\'>${ini(inj.player)}</span>'">`:`<span class="ini">${ini(inj.player)}</span>`;const dt=inj.date?new Date(inj.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';h+=`<tr><td><div class="pc">${hsH}<span class="nm">${inj.player}</span></div></td><td><span class="tag ${cls}">${inj.status}</span></td><td style="color:#ccc">${inj.injury||''}</td><td style="color:#aaa">${dt}</td></tr>`;}
   h+='</tbody></table>';h+=`<div class="link-row"><a href="https://aderoa.github.io/Injuries/" target="_blank">Full Injury Report →</a></div>`;return h;
 }
 
