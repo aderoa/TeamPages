@@ -100,7 +100,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dc .badge.b-tw{background:rgba(255,138,101,.12);color:#e65100}
 .dc .badge.b-10d{background:rgba(255,193,7,.12);color:#f57f17}
 .d-sep{grid-column:1/-1;height:3px;background:rgba(239,83,80,.5);border-radius:2px;margin:2px 0}
-.d-sep-cell{height:3px;background:rgba(239,83,80,.5);border-radius:2px;align-self:center}
+.d-sep-cell{}
 .d-spacer{min-height:105px;background:rgba(150,150,160,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(150,150,160,.5);font-size:.6rem;font-style:italic}
 .d-empty{min-height:105px}
 
@@ -352,7 +352,7 @@ function renderDepth(D){
     for(const pos of POS){
       const e=cols[pos][i]||null;
       if(!e||e==='__SPACER__'){h+='<div class="d-empty"></div>';continue;}
-      if(e==='__SEPARATOR__'){h+='<div class="d-sep-cell"></div>';continue;}
+      if(e==='__SEPARATOR__'){h+='<div class="d-empty"></div>';continue;}
       const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
       const hs=D.hs[e],sal=D.salMap[nk]||0;
       const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
