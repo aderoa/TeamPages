@@ -151,10 +151,14 @@ function initLanding(){
 function initTeamPage(){
 const teamInfo=NBA_TEAMS[TEAM];
 document.title=`${teamInfo.name} — HoopsMatic`;
-const SID='2PACX-1vTETfPTYMjVB0ttSfU4_TN2-FaX-mGOhIHMBONDfbnIVbjZih9GS9CJJ5LsDUMGig';
-const CURL=`https://docs.google.com/spreadsheets/d/e/${SID}/pub?gid=1649473047&single=true&output=csv`;
-const RURL=`https://docs.google.com/spreadsheets/d/e/${SID}/pub?gid=0&single=true&output=csv`;
-const DURL=`https://docs.google.com/spreadsheets/d/e/${SID}/pub?gid=1908498377&single=true&output=csv`;
+const SSID='11llk0icQqoi0JwJXat5KO8y2RQeBMN5rS9FhAY56Idc';
+const PUB_ID='2PACX-1vTETfPTYMjVB0ttSfU4_TN2-FaX-mGOhIHMBONDfbnIVbjZih9GS9CJJ5LsDUMGig';
+// Primary: gviz/tq format (works with shared sheets). Fallback: pub format.
+const gvizUrl=(gid)=>`https://docs.google.com/spreadsheets/d/${SSID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const pubUrl=(gid)=>`https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pub?gid=${gid}&single=true&output=csv`;
+const CURL=gvizUrl('1649473047');
+const RURL=gvizUrl('0');
+const DURL=gvizUrl('1908498377');
 const IURL='https://aderoa.github.io/Injuries/injuries.json';
 const OURL='https://aderoa.github.io/DepthCharts/order.json';
 const YC=[{l:"'25-26",s:7,c:8,t:9},{l:"'26-27",s:10,c:11,t:12},{l:"'27-28",s:13,c:14,t:15},{l:"'28-29",s:16,c:17,t:18},{l:"'29-30",s:19,c:20,t:21},{l:"'30-31",s:22,c:23,t:24}];
@@ -174,11 +178,27 @@ async function safeFetch(url,label,isJson){
   dbg(true,`${label}: OK${isJson?'':' ('+d.length+' chars)'}`);return d;
   }catch(e){dbg(false,`${label}: ${e.message}`);return null;}}
 
+// Fetch CSV with fallback: gviz → pub → export
+async function fetchCSV(gid,label){
+  const isCSV=(d)=>d&&d.length>50&&!d.trim().startsWith('<'); // reject HTML responses
+  // Try gviz/tq format first
+  let d=await safeFetch(gvizUrl(gid),label+' (gviz)',false);
+  if(isCSV(d))return d;
+  // Fallback: pub format
+  d=await safeFetch(pubUrl(gid),label+' (pub)',false);
+  if(isCSV(d))return d;
+  // Fallback: export format
+  d=await safeFetch(`https://docs.google.com/spreadsheets/d/${SSID}/export?format=csv&gid=${gid}`,label+' (export)',false);
+  if(isCSV(d))return d;
+  dbg(false,`${label}: all URL formats failed`);
+  return null;
+}
+
 async function loadAll(){
   const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{}};
   const[cTxt,rTxt,dTxt,iJson,oJson]=await Promise.all([
-    safeFetch(CURL,'Contracts',false),safeFetch(RURL,'Roster',false),
-    safeFetch(DURL,'Draft',false),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
+    fetchCSV('1649473047','Contracts'),fetchCSV('0','Roster'),
+    fetchCSV('1908498377','Draft'),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
     safeFetch(OURL+'?t='+Date.now(),'DepthOrder',true)]);
 
   if(cTxt){const rows=parseCSV(cTxt);
