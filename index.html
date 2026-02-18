@@ -195,7 +195,7 @@ async function fetchCSV(gid,label){
 }
 
 async function loadAll(){
-  const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{}};
+  const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{},draftRights:[],deadCap:[]};
   const[cTxt,rTxt,_unused,iJson,oJson]=await Promise.all([
     fetchCSV('1649473047','Contracts'),fetchCSV('0','Roster'),
     Promise.resolve(null),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
@@ -223,8 +223,19 @@ async function loadAll(){
     for(let j=1;j<rows.length;j++){const r=rows[j],nm=pi>=0?(r[pi]||'').trim():'',rt=ti>=0?resolveTeam((r[ti]||'').trim()):'';
     if(!nm)continue;const hs=hi>=0?(r[hi]||'').trim():'';if(hs)D.hs[nm]=hs;
     if(rt===TEAM){D.roster[nm]={pos:bmi<r.length?(r[bmi]||'').trim():''};if(!D.salMap[norm(nm)]&&si>=0)D.salMap[norm(nm)]=pS(r[si]);}}
-    dbg(true,`Roster: ${Object.keys(D.roster).length} players, ${Object.keys(D.hs).length} headshots`);}}
-
+    dbg(true,`Roster: ${Object.keys(D.roster).length} players, ${Object.keys(D.hs).length} headshots`);
+    // Draft Rights: BT=71 (player), BU=72 (year), BV=73 (team)
+    for(let j=1;j<rows.length;j++){const r=rows[j];
+      const drName=(r[71]||'').trim(),drYear=(r[72]||'').trim(),drTeam=resolveTeam((r[73]||'').trim());
+      if(drName&&drTeam===TEAM)D.draftRights.push({name:drName,year:drYear,team:drTeam});}
+    dbg(true,`Draft Rights: ${D.draftRights.length} for ${TEAM}`);
+    // Dead Cap: DP=119 (team), DQ=120 (player), DR=121 (salary)
+    for(let j=1;j<rows.length;j++){const r=rows[j];
+      const dcTeam=resolveTeam((r[119]||'').trim()),dcPlayer=(r[120]||'').trim(),dcSal=pS(r[121]);
+      if(dcPlayer&&dcTeam===TEAM&&dcSal>0)D.deadCap.push({name:dcPlayer,salary:dcSal});}
+    D.deadCap.sort((a,b)=>b.salary-a.salary);
+    dbg(true,`Dead Cap: ${D.deadCap.length} for ${TEAM}`);
+    }}
   // DRAFT - try multiple GIDs since sheet may have been reorganized
   const DRAFT_GIDS=['965849547','1908498377','1889032294'];
   let draftFound=false;
@@ -358,6 +369,24 @@ function renderDraft(D){
   return D.draft.map(d=>`<div class="draft-card"><div class="draft-pick-num${d.round===2?' second':''}">#${d.pickPos}</div><div class="draft-info"><div class="prospect">${d.prospect}</div><div class="meta">Round ${d.round} · Aggregate rank: #${d.aggRank}</div></div></div>`).join('');
 }
 
+function renderDraftRights(D){
+  if(!D.draftRights.length)return'<div class="empty-msg">No draft rights held by this team</div>';
+  let h='<table><thead><tr><th>Player</th><th>Drafted</th></tr></thead><tbody>';
+  for(const dr of D.draftRights){
+    h+=`<tr><td style="font-weight:600;color:white">${dr.name}</td><td style="color:#8892b0">${dr.year}</td></tr>`;}
+  h+='</tbody></table>';return h;
+}
+
+function renderDeadCap(D){
+  if(!D.deadCap.length)return'<div class="empty-msg">No dead cap charges</div>';
+  const tot=D.deadCap.reduce((s,d)=>s+d.salary,0);
+  let h='<table><thead><tr><th>Player</th><th>Dead Cap</th></tr></thead><tbody>';
+  for(const dc of D.deadCap){
+    h+=`<tr><td style="font-weight:600;color:white">${dc.name}</td><td><span class="sal ng">${fS(dc.salary)}</span></td></tr>`;}
+  h+='</tbody></table>';
+  h+=`<div class="link-row">Total dead cap: <strong style="color:#ef5350">${fS(tot)}</strong></div>`;return h;
+}
+
 function renderInjuries(D){
   if(!D.injuries.length)return'<div class="empty-msg">No players currently on the injury report 🎉</div>';
   let h='<table><thead><tr><th>Player</th><th>Status</th><th>Injury</th><th>Date</th></tr></thead><tbody>';
@@ -373,10 +402,12 @@ function renderDebug(){
 
 async function run(){
   try{const D=await loadAll();let h=renderHeader();
-  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>📋</span> Contracts <span class="count">${D.contracts.length} players</span></div><div class="section-body">${renderContracts(D)}</div></div>`;
   h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🏀</span> Rotation / Depth Chart <span class="count">${Object.keys(D.roster).length} players</span></div><div class="section-body">${renderDepth(D)}</div></div>`;
-  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🎯</span> Draft Projection <span class="count">${D.draft.length} pick${D.draft.length!==1?'s':''}</span></div><div class="section-body">${renderDraft(D)}</div></div>`;
   h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🏥</span> Injury Report <span class="count">${D.injuries.length} player${D.injuries.length!==1?'s':''}</span></div><div class="section-body">${renderInjuries(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>📋</span> Contracts <span class="count">${D.contracts.length} players</span></div><div class="section-body">${renderContracts(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>🎯</span> Draft Projection <span class="count">${D.draft.length} pick${D.draft.length!==1?'s':''}</span></div><div class="section-body">${renderDraft(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>📝</span> Draft Rights <span class="count">${D.draftRights.length} player${D.draftRights.length!==1?'s':''}</span></div><div class="section-body">${renderDraftRights(D)}</div></div>`;
+  h+=`<div class="section"><div class="section-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><span>💀</span> Dead Cap <span class="count">${D.deadCap.length} charge${D.deadCap.length!==1?'s':''}</span></div><div class="section-body">${renderDeadCap(D)}</div></div>`;
   h+=`<div class="footer">Powered by <a href="https://hoopsmatic.com" target="_blank">HoopsMatic</a> · <a href="https://aderoa.github.io/Contracts/" target="_blank">Contracts</a> · <a href="https://aderoa.github.io/DepthCharts/" target="_blank">Depth Charts</a> · <a href="https://aderoa.github.io/Injuries/" target="_blank">Injuries</a></div>`;
   h+=renderDebug();
   document.getElementById('app').innerHTML=h;
