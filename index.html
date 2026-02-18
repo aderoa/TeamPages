@@ -100,6 +100,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dc .badge.b-tw{background:rgba(255,138,101,.12);color:#e65100}
 .dc .badge.b-10d{background:rgba(255,193,7,.12);color:#f57f17}
 .d-sep{grid-column:1/-1;height:3px;background:rgba(239,83,80,.5);border-radius:2px;margin:2px 0}
+.d-sep-cell{height:3px;background:rgba(239,83,80,.5);border-radius:2px;align-self:center}
 .d-spacer{min-height:105px;background:rgba(150,150,160,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(150,150,160,.5);font-size:.6rem;font-style:italic}
 .d-empty{min-height:105px}
 
@@ -342,15 +343,16 @@ function renderDepth(D){
   let h='<div class="depth-grid">';
   // Header row
   for(const pos of POS) h+=`<div class="depth-pos-hdr">${pos}</div>`;
-  // Data rows
+  // Data rows - render cell by cell, separators within their cells
   for(let i=0;i<mx;i++){
-    // Check if this row is a separator row (any column has __SEPARATOR__)
-    const isSepRow=POS.some(p=>(cols[p][i]||'')==='__SEPARATOR__');
-    if(isSepRow){h+='<div class="d-sep"></div>';continue;}
+    // Check if ALL columns have separator at this index (true row separator)
+    const allSep=POS.every(p=>{const v=cols[p][i]||'';return v==='__SEPARATOR__'||v==='__SPACER__'||v==='';});
+    const anySep=POS.some(p=>(cols[p][i]||'')==='__SEPARATOR__');
+    if(allSep&&anySep){h+='<div class="d-sep"></div>';continue;}
     for(const pos of POS){
       const e=cols[pos][i]||null;
-      if(!e){h+='<div class="d-empty"></div>';continue;}
-      if(e==='__SPACER__'){h+='<div class="d-spacer">— blank —</div>';continue;}
+      if(!e||e==='__SPACER__'){h+='<div class="d-empty"></div>';continue;}
+      if(e==='__SEPARATOR__'){h+='<div class="d-sep-cell"></div>';continue;}
       const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
       const hs=D.hs[e],sal=D.salMap[nk]||0;
       const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
