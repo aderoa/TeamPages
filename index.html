@@ -100,8 +100,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dc .badge.b-inj{background:rgba(244,67,54,.12);color:#ef5350}
 .dc .badge.b-tw{background:rgba(255,138,101,.12);color:#e65100}
 .dc .badge.b-10d{background:rgba(255,193,7,.12);color:#f57f17}
-.d-sep{height:4px;background:#bbb;border-radius:2px;margin:2px 0}
-.d-spacer{min-height:80px;background:rgba(200,200,200,.15);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.d-sep{height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin:4px 0}
+.d-spacer{min-height:0}
 .d-empty{min-height:30px}
 
 /* MISC */
@@ -197,9 +197,9 @@ async function fetchCSV(gid,label){
 
 async function loadAll(){
   const D={contracts:[],roster:{},salMap:{},draft:[],injuries:[],depthOrder:null,hs:{},notesMap:{}};
-  const[cTxt,rTxt,dTxt,iJson,oJson]=await Promise.all([
+  const[cTxt,rTxt,_unused,iJson,oJson]=await Promise.all([
     fetchCSV('1649473047','Contracts'),fetchCSV('0','Roster'),
-    fetchCSV('1908498377','Draft'),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
+    Promise.resolve(null),safeFetch(IURL+'?t='+Date.now(),'Injuries',true),
     safeFetch(OURL+'?t='+Date.now(),'DepthOrder',true)]);
 
   if(cTxt){const rows=parseCSV(cTxt);
@@ -226,27 +226,64 @@ async function loadAll(){
     if(rt===TEAM){D.roster[nm]={pos:bmi<r.length?(r[bmi]||'').trim():''};if(!D.salMap[norm(nm)]&&si>=0)D.salMap[norm(nm)]=pS(r[si]);}}
     dbg(true,`Roster: ${Object.keys(D.roster).length} players, ${Object.keys(D.hs).length} headshots`);}}
 
-  if(dTxt){const rows=parseCSV(dTxt);
+  // DRAFT - try multiple GIDs since sheet may have been reorganized
+  const DRAFT_GIDS=['965849547','1908498377','1889032294'];
+  let draftFound=false;
+  for(const dgid of DRAFT_GIDS){
+    if(draftFound)break;
+    const dTxt=await fetchCSV(dgid,'Draft(gid='+dgid+')');
+    if(!dTxt)continue;
+    const rows=parseCSV(dTxt);
     const hdr=(rows[0]||[]).map(h=>(h||'').trim().toUpperCase());
-    dbg(true,`Draft parsed: ${rows.length} rows. Headers[0..4]: [${hdr.slice(0,5).join(', ')}] [15]=${hdr[15]||'?'} [16]=${hdr[16]||'?'}`);
-    // Try to find POS and TEAM columns by header name first
-    let posCol=hdr.indexOf('POS');if(posCol<0)posCol=hdr.indexOf('PICK');if(posCol<0)posCol=15;
-    let tmCol=hdr.indexOf('TEAM');if(tmCol<0)tmCol=16;
-    // Log sample draft rows for debugging
-    const samples=[];
-    for(let i=1;i<Math.min(rows.length,6);i++){
-      const r=rows[i];
-      samples.push(`${(r[0]||'').trim()} | col${posCol}="${(r[posCol]||'').trim()}" | col${tmCol}="${(r[tmCol]||'').trim()}"`);
+    dbg(true,`Draft gid=${dgid}: ${rows.length} rows. H[0..4]=[${hdr.slice(0,5).join(',')}]`);
+    // Detect draft predictor format: first col should be prospect name or rank
+    // Draft predictor has prospect in col 0, aggregate rank in col 1, pick pos & team later
+    // Find TEAM and POS/PICK columns
+    let posCol=-1,tmCol=-1;
+    // Strategy 1: search by header name
+    for(let c=0;c<hdr.length;c++){
+      if(hdr[c]==='POS'&&posCol<0&&c>5)posCol=c; // POS after col 5 = pick position, not player position
+      if(hdr[c]==='PICK')posCol=c;
+      if(hdr[c]==='TEAM'&&c>5)tmCol=c; // TEAM after col 5 = pick team, not player team
     }
-    dbg(true,`Draft samples: ${samples.join(' // ')}`);
-    // Parse all draft picks, trying multiple team matching strategies
+    // Strategy 2: try cols 15,16 (original Draft Predictor layout)
+    if(posCol<0)posCol=15;
+    if(tmCol<0)tmCol=16;
+    // Verify by checking sample data
+    let matchCount=0;
+    for(let i=1;i<Math.min(rows.length,10);i++){
+      const r=rows[i];
+      const pp=parseInt((r[posCol]||'').trim());
+      const tm=(r[tmCol]||'').trim();
+      if(pp>0&&pp<=60&&tm)matchCount++;
+    }
+    dbg(true,`Draft gid=${dgid}: posCol=${posCol} tmCol=${tmCol} matchCount=${matchCount}/first9`);
+    if(matchCount<2){
+      // Try scanning all columns for one that has pick-like numbers (1-60) paired with team names
+      for(let tc=0;tc<Math.min(hdr.length,30);tc++){
+        for(let pc=Math.max(0,tc-3);pc<Math.min(hdr.length,tc+3);pc++){
+          if(pc===tc)continue;
+          let m=0;
+          for(let i=1;i<Math.min(rows.length,15);i++){
+            const pp=parseInt((rows[i][pc]||'').trim());
+            const tm=resolveTeam((rows[i][tc]||'').trim());
+            if(pp>0&&pp<=60&&tm&&NBA_TEAMS[tm])m++;
+          }
+          if(m>=3){posCol=pc;tmCol=tc;matchCount=m;dbg(true,`Draft: auto-detected posCol=${pc} tmCol=${tc} (${m} matches)`);}
+        }
+        if(matchCount>=3)break;
+      }
+    }
+    if(matchCount<2){dbg(false,`Draft gid=${dgid}: no valid pick/team data found`);continue;}
     for(let i=1;i<rows.length;i++){const r=rows[i],pr=(r[0]||'').trim(),ag=parseInt((r[1]||'').trim())||0;
     const pp=parseInt((r[posCol]||'').trim())||0;
     const rawTm=(r[tmCol]||'').trim();
     const pt=resolveTeam(rawTm);
     if(!pr||!pp)continue;
     if(pt===TEAM){D.draft.push({prospect:pr,aggRank:ag,pickPos:pp,round:pp<=30?1:2});}}
-    D.draft.sort((a,b)=>a.pickPos-b.pickPos);dbg(true,`Draft: ${D.draft.length} picks for ${TEAM}`);}
+    if(D.draft.length>0){D.draft.sort((a,b)=>a.pickPos-b.pickPos);draftFound=true;}
+    dbg(D.draft.length>0,`Draft gid=${dgid}: ${D.draft.length} picks for ${TEAM}`);
+  }
 
   if(iJson&&Array.isArray(iJson)){
     const lat={};for(const e of iJson)lat[e.player]=e;
@@ -300,7 +337,7 @@ function renderDepth(D){
       const e=cols[pos][i]||null;
       if(!e){h+='<div class="d-empty"></div>';continue;}
       if(e==='__SEPARATOR__'){h+='<div class="d-sep"></div>';continue;}
-      if(e==='__SPACER__'){h+='<div class="d-spacer"><span style="color:#999;font-size:.6rem;font-style:italic">— blank —</span></div>';continue;}
+      if(e==='__SPACER__'){h+='<div class="d-spacer"></div>';continue;}
       const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
       const hs=D.hs[e],sal=D.salMap[nk]||0;
       const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
