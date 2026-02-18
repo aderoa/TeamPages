@@ -272,17 +272,30 @@ async function loadAll(){
     }
     // If no TEAM headers found, try detecting by known column positions
     if(!capGroups.length){
-      // AJ=35..AT=45 might be year 1, AU=46..BD=55 year 2
       capGroups=[
         {teamCol:35,label:"'25-26",fields:{}},
         {teamCol:47,label:"'26-27",fields:{}}
       ];
-      // Assign fields sequentially after team col
-      for(const g of capGroups){
+    }
+    // For any group with no mapped fields, assign sequentially after team col
+    for(const g of capGroups){
+      if(Object.keys(g.fields).length<3){
+        g.fields={};
         CAP_FIELDS.forEach((f,i)=>{g.fields[f]=g.teamCol+1+i;});
       }
     }
     dbg(true,`Cap groups: ${capGroups.length}, labels=[${capGroups.map(g=>g.label).join(',')}]`);
+    // Log field column assignments
+    for(const g of capGroups){
+      const fStr=Object.entries(g.fields).map(([f,c])=>`${f}=[${c}]`).join(', ');
+      dbg(true,`Cap ${g.label}: teamCol=${g.teamCol}, ${fStr}`);
+      // Log first matching team row sample
+      for(let j=1;j<Math.min(rows.length,5);j++){
+        const r=rows[j];
+        const vals=Object.entries(g.fields).map(([f,c])=>`${f}="${(r[c]||'').trim()}"`).join(', ');
+        dbg(true,`Cap ${g.label} row[${j}]: team="${(r[g.teamCol]||'').trim()}" ${vals}`);
+      }
+    }
     // Find team row and extract values for each group
     for(const g of capGroups){
       for(let j=1;j<rows.length;j++){
