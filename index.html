@@ -388,21 +388,37 @@ function renderDepth(D){
   if(D.depthOrder){for(const p of POS)if(D.depthOrder[p])cols[p]=D.depthOrder[p];}
   else{for(const[nm,info]of Object.entries(D.roster)){const p=info.pos.toUpperCase();if(cols[p])cols[p].push(nm);else if(p==='G')cols.SG.push(nm);else if(p==='F')cols.SF.push(nm);}}
 
+  // Deduplicate: track seen players, replace duplicates with __SPACER__
+  const seen=new Set();
+  for(const pos of POS){
+    for(let i=0;i<cols[pos].length;i++){
+      const e=cols[pos][i];
+      if(!e||e==='__SEPARATOR__'||e==='__SPACER__')continue;
+      const nk=norm(e);
+      if(seen.has(nk)){cols[pos][i]='__SPACER__';}
+      else{seen.add(nk);}
+    }
+  }
+
+  // Find separator row: the row index where most columns have __SEPARATOR__
   const mx=Math.max(...POS.map(p=>cols[p].length),1);
+  let sepRow=-1,sepMax=0;
+  for(let i=0;i<mx;i++){
+    const sepCount=POS.filter(p=>(cols[p][i]||'')==='__SEPARATOR__').length;
+    if(sepCount>sepMax){sepMax=sepCount;sepRow=i;}
+  }
+
   // Render as flat grid: header row, then data rows
   let h='<div class="depth-grid">';
   // Header row
   for(const pos of POS) h+=`<div class="depth-pos-hdr">${pos}</div>`;
-  // Data rows - render cell by cell, separators within their cells
+  // Data rows
   for(let i=0;i<mx;i++){
-    // Check if ALL columns have separator at this index (true row separator)
-    const allSep=POS.every(p=>{const v=cols[p][i]||'';return v==='__SEPARATOR__'||v==='__SPACER__'||v==='';});
-    const anySep=POS.some(p=>(cols[p][i]||'')==='__SEPARATOR__');
-    if(allSep&&anySep){h+='<div class="d-sep"></div>';continue;}
+    // Render separator line at the detected separator row
+    if(i===sepRow&&sepMax>=2){h+='<div class="d-sep"></div>';continue;}
     for(const pos of POS){
       const e=cols[pos][i]||null;
-      if(!e||e==='__SPACER__'){h+='<div class="d-empty"></div>';continue;}
-      if(e==='__SEPARATOR__'){h+='<div class="d-empty"></div>';continue;}
+      if(!e||e==='__SPACER__'||e==='__SEPARATOR__'){h+='<div class="d-empty"></div>';continue;}
       const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
       const hs=D.hs[e],sal=D.salMap[nk]||0;
       const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
