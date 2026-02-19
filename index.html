@@ -408,25 +408,56 @@ function renderDepth(D){
     if(sepCount>sepMax){sepMax=sepCount;sepRow=i;}
   }
 
-  // Render as flat grid: header row, then data rows
+  // Compact below-separator: collect real players per column, rebuild as aligned rows
+  let aboveRows=[],belowRows=[];
+  if(sepRow>=0&&sepMax>=2){
+    // Above separator: rows 0..sepRow-1
+    for(let i=0;i<sepRow;i++){
+      const row=POS.map(p=>cols[p][i]||null);
+      aboveRows.push(row);
+    }
+    // Below separator: collect non-empty/non-separator entries per column, then zip
+    const belowCols=POS.map(p=>{
+      const entries=[];
+      for(let i=sepRow+1;i<cols[p].length;i++){
+        const e=cols[p][i];
+        if(e&&e!=='__SEPARATOR__'&&e!=='__SPACER__')entries.push(e);
+      }
+      return entries;
+    });
+    const belowMax=Math.max(...belowCols.map(c=>c.length),0);
+    for(let i=0;i<belowMax;i++){
+      belowRows.push(POS.map((_,pi)=>belowCols[pi][i]||null));
+    }
+  } else {
+    // No separator found, just use all rows as-is
+    for(let i=0;i<mx;i++){
+      aboveRows.push(POS.map(p=>cols[p][i]||null));
+    }
+  }
+
+  // Render
   let h='<div class="depth-grid">';
-  // Header row
   for(const pos of POS) h+=`<div class="depth-pos-hdr">${pos}</div>`;
-  // Data rows
-  for(let i=0;i<mx;i++){
-    // Render separator line at the detected separator row
-    if(i===sepRow&&sepMax>=2){h+='<div class="d-sep"></div>';continue;}
-    for(const pos of POS){
-      const e=cols[pos][i]||null;
+  
+  function renderRow(row,rowIdx){
+    for(let pi=0;pi<POS.length;pi++){
+      const e=row[pi];
       if(!e||e==='__SPACER__'||e==='__SEPARATOR__'){h+='<div class="d-empty"></div>';continue;}
       const nk=norm(e),isI=injSet.has(nk),isT=twSet.has(nk),is10=tdSet.has(nk);
       const hs=D.hs[e],sal=D.salMap[nk]||0;
       const sc=sal>=20e6?'high':sal>=5e6?'mid':'low';
-      let cl='dc';if(i===0)cl+=' starter';if(isI)cl+=' injured';else if(isT)cl+=' twoway';else if(is10)cl+=' tenday';
+      let cl='dc';if(rowIdx===0)cl+=' starter';if(isI)cl+=' injured';else if(isT)cl+=' twoway';else if(is10)cl+=' tenday';
       const img=hs?`<img class="hs" src="${hs}" onerror="this.outerHTML='<div class=\\'hs-ini\\'>${ini(e)}</div>'">`:`<div class="hs-ini">${ini(e)}</div>`;
       let badges='';if(isI)badges+='<span class="badge b-inj">INJ</span> ';if(isT)badges+='<span class="badge b-tw">2W</span> ';if(is10)badges+='<span class="badge b-10d">10D</span> ';
       h+=`<div class="${cl}">${img}<div class="dn">${e}</div>${sal?`<div class="ds ${sc}">${fS(sal)}</div>`:''}${badges}</div>`;
     }
+  }
+
+  for(let i=0;i<aboveRows.length;i++)renderRow(aboveRows[i],i);
+  if(belowRows.length){
+    h+='<div class="d-sep"></div>';
+    for(let i=0;i<belowRows.length;i++)renderRow(belowRows[i],-1);
   }
   h+='</div>';
   h+=`<div class="link-row"><a href="https://aderoa.github.io/DepthCharts/?team=${TEAM}" target="_blank">Full Depth Charts →</a></div>`;return h;
