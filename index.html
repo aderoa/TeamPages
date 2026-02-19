@@ -242,31 +242,44 @@ async function loadAll(){
     D.deadCap.sort((a,b)=>(b.yrs[0]||0)-(a.yrs[0]||0));
     dbg(true,`Dead Cap: ${D.deadCap.length} for ${TEAM}`);
     // Salary Cap Situation
-    // Col 34 = TEAM for cap section (separate from player TEAM at col 2)
-    // '25-26: cols 35-47, '26-27: cols 48-58
-    const CAP_LABELS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
-    const CAP_YEARS=[
-      {label:"'25-26",cols:{
-        'ACTIVE SALARIES':35,'DEAD MONEY':37,'CAP SPACE':38,
-        'TAX':40,'1ST APRON':41,'2ND APRON':-1,
-        'PLAYERS':42,'TWO-WAYS':44,'GUARANTEED':45,'NOT G':47}},
-      {label:"'26-27",cols:{
-        'ACTIVE SALARIES':49,'DEAD MONEY':50,'CAP SPACE':52,
-        'TAX':53,'1ST APRON':54,'2ND APRON':56,
-        'PLAYERS':-1,'TWO-WAYS':-1,'GUARANTEED':-1,'NOT G':-1}}
+    // '25-26: AI-BG (34-58), team col 34
+    // '26-27: CQ-DN (94-117), team col 94
+    const CAP_DISPLAY=[
+      {f:'ACTIVE SALARIES',money:true},
+      {f:'DEAD MONEY',money:true},
+      {f:'CAP SPACE',money:true},
+      {f:'TAX',money:true},
+      {f:'1ST APRON',money:true},
+      {f:'2ND APRON',money:true},
+      {f:'PLAYERS',money:false},
+      {f:'GUARANTEED',money:false},
+      {f:'NOT G',money:false},
+      {f:'TWO-WAYS',money:false}
     ];
-    // Find team row in col 34
+    const CAP_YEARS=[
+      {label:"'25-26",teamCol:34,map:{
+        'ACTIVE SALARIES':35,'DEAD MONEY':37,'CAP SPACE':38,'TAX':40,
+        '1ST APRON':54,'2ND APRON':56,
+        'PLAYERS':42,'GUARANTEED':45,'NOT G':47,'TWO-WAYS':44}},
+      {label:"'26-27",teamCol:94,map:{
+        'ACTIVE SALARIES':95,'DEAD MONEY':97,'CAP SPACE':98,'TAX':100,
+        '1ST APRON':114,'2ND APRON':116,
+        'PLAYERS':102,'GUARANTEED':105,'NOT G':107,'TWO-WAYS':104}}
+    ];
     for(const yr of CAP_YEARS){
       for(let j=1;j<rows.length;j++){
         const r=rows[j];
-        const rowTeam=resolveTeam((r[34]||'').trim());
+        const rowTeam=resolveTeam((r[yr.teamCol]||'').trim());
         if(rowTeam!==TEAM)continue;
         const capData={};
-        for(const f of CAP_LABELS){
-          const ci=yr.cols[f];
-          if(ci<0){capData[f]='';continue;}
+        for(const d of CAP_DISPLAY){
+          const ci=yr.map[d.f];
           const val=(r[ci]||'').trim();
-          capData[f]=pS(val)||val;
+          if(d.money){
+            capData[d.f]=pS(val)||0;
+          } else {
+            capData[d.f]=parseInt(val.replace(/[$,\s]/g,''))||0;
+          }
         }
         D.capSituation[yr.label]=capData;
         break;
@@ -443,31 +456,39 @@ function renderInjuries(D){
 function renderCapSituation(D){
   const years=Object.keys(D.capSituation);
   if(!years.length)return'<div class="empty-msg">No salary cap data available</div>';
-  const FIELDS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
-  const MONEY_FIELDS=new Set(['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON']);
+  const FIELDS=[
+    {f:'ACTIVE SALARIES',money:true},
+    {f:'DEAD MONEY',money:true},
+    {f:'CAP SPACE',money:true},
+    {f:'TAX',money:true},
+    {f:'1ST APRON',money:true},
+    {f:'2ND APRON',money:true},
+    {f:'PLAYERS',money:false},
+    {f:'GUARANTEED',money:false},
+    {f:'NOT G',money:false},
+    {f:'TWO-WAYS',money:false}
+  ];
   let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">';
   for(const yr of years){
     const cap=D.capSituation[yr];
     h+=`<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:1rem">`;
     h+=`<div style="font-weight:700;font-size:.9rem;color:white;margin-bottom:.75rem;text-align:center">${yr}</div>`;
-    for(const f of FIELDS){
-      const val=cap[f];
-      if(val===''||val===undefined)continue; // skip unavailable fields
-      const isMoney=MONEY_FIELDS.has(f);
+    for(const fd of FIELDS){
+      const val=cap[fd.f];
       let display='—';
-      if(typeof val==='number'&&val!==0){
-        display=fS(Math.abs(val));
-        if(val<0)display='-'+display;
-      } else if(typeof val==='number'&&val===0){
-        display=isMoney?'$0':'0';
-      } else if(typeof val==='string'&&val){
-        display=val;
-      }
       let color='white';
-      if(f==='CAP SPACE'){color=typeof val==='number'?(val>=0?'#4caf50':'#ef5350'):'white';}
-      else if(f==='TAX'||f==='1ST APRON'||f==='2ND APRON'){color=typeof val==='number'?(val>0?'#4caf50':'#ef5350'):'white';}
+      if(fd.money){
+        if(typeof val==='number'&&val!==0){
+          display=fS(Math.abs(val));
+          if(val<0)display='-'+display;
+        } else display='$0';
+        if(fd.f==='CAP SPACE')color=val>=0?'#4caf50':'#ef5350';
+        else if(fd.f==='TAX'||fd.f==='1ST APRON'||fd.f==='2ND APRON')color=typeof val==='number'?(val>0?'#4caf50':'#ef5350'):'white';
+      } else {
+        display=String(val||0);
+      }
       h+=`<div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.78rem">`;
-      h+=`<span style="color:rgba(255,255,255,.7)">${f}</span>`;
+      h+=`<span style="color:rgba(255,255,255,.7)">${fd.f}</span>`;
       h+=`<span style="color:${color};font-weight:600">${display}</span>`;
       h+=`</div>`;
     }
