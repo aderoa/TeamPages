@@ -241,65 +241,38 @@ async function loadAll(){
       if(yrs.some(v=>v>0))D.deadCap.push({name:dcPlayer,yrs});}
     D.deadCap.sort((a,b)=>(b.yrs[0]||0)-(a.yrs[0]||0));
     dbg(true,`Dead Cap: ${D.deadCap.length} for ${TEAM}`);
-    // Salary Cap Situation: AJ-BG (cols 35-58)
-    const CAP_FIELDS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
-    const capHdr=rows[0].map(h=>(h||'').trim().toUpperCase());
-    // Log broader header range to find team column
-    const hdrSample=[];
-    for(let c=30;c<=58;c++)hdrSample.push(`[${c}]=${capHdr[c]||''}`);
-    dbg(true,`Cap headers 30-58: ${hdrSample.join(' ')}`);
-    // Log sample data rows in cols 30-48 to find team identifier
-    for(let j=1;j<Math.min(rows.length,4);j++){
-      const vals=[];
-      for(let c=30;c<=48;c++)vals.push(`[${c}]=${(rows[j][c]||'').trim().slice(0,20)}`);
-      dbg(true,`Cap data row[${j}] cols 30-48: ${vals.join(' ')}`);
-    }
-    // Also log what r[ti] gives for these rows
-    for(let j=1;j<Math.min(rows.length,4);j++){
-      dbg(true,`Row[${j}] TEAM col[${ti}]="${(rows[j][ti]||'').trim()}" col[35]="${(rows[j][35]||'').trim().slice(0,20)}" col[47]="${(rows[j][47]||'').trim().slice(0,20)}"`);
-    }
-    
-    // Strategy: find which column in range 30-58 contains team abbreviations
-    let capTeamCol=-1;
-    for(let c=30;c<=58;c++){
-      const v=(rows[1]&&rows[1][c]||'').trim();
-      if(v.length>=2&&v.length<=3&&/^[A-Z]{2,3}$/.test(v)){capTeamCol=c;break;}
-      const rt=resolveTeam(v);
-      if(rt&&!v.startsWith('$')&&!v.startsWith('-')&&!/^\d+$/.test(v)){capTeamCol=c;break;}
-    }
-    // Also check if main TEAM column (ti) aligns with cap data
-    if(capTeamCol<0){
-      // Check if first few rows' r[ti] correspond to unique teams with cap data
-      const tiTeams=new Set();
-      for(let j=1;j<Math.min(rows.length,35);j++){
-        const t=resolveTeam((rows[j][ti]||'').trim());
-        if(t&&!tiTeams.has(t)&&(rows[j][35]||'').trim()){tiTeams.add(t);}
-      }
-      if(tiTeams.size>=20)capTeamCol=ti; // main TEAM col works
-    }
-    dbg(true,`Cap team column detected: ${capTeamCol}`);
-    
-    const CAP_YEARS=[{label:"'25-26",start:35},{label:"'26-27",start:47}];
+    // Salary Cap Situation
+    // Col 34 = TEAM for cap section (separate from player TEAM at col 2)
+    // '25-26: cols 35-47, '26-27: cols 48-58
+    const CAP_LABELS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
+    const CAP_YEARS=[
+      {label:"'25-26",cols:{
+        'ACTIVE SALARIES':35,'DEAD MONEY':37,'CAP SPACE':38,
+        'TAX':40,'1ST APRON':41,'2ND APRON':-1,
+        'PLAYERS':42,'TWO-WAYS':44,'GUARANTEED':45,'NOT G':47}},
+      {label:"'26-27",cols:{
+        'ACTIVE SALARIES':49,'DEAD MONEY':50,'CAP SPACE':52,
+        'TAX':53,'1ST APRON':54,'2ND APRON':56,
+        'PLAYERS':-1,'TWO-WAYS':-1,'GUARANTEED':-1,'NOT G':-1}}
+    ];
+    // Find team row in col 34
     for(const yr of CAP_YEARS){
       for(let j=1;j<rows.length;j++){
         const r=rows[j];
-        if(!(r[yr.start]||'').trim())continue; // skip empty rows
-        const rowTeam=capTeamCol>=0?resolveTeam((r[capTeamCol]||'').trim()):'';
+        const rowTeam=resolveTeam((r[34]||'').trim());
         if(rowTeam!==TEAM)continue;
         const capData={};
-        CAP_FIELDS.forEach((f,i)=>{
-          const val=(r[yr.start+i]||'').trim();
+        for(const f of CAP_LABELS){
+          const ci=yr.cols[f];
+          if(ci<0){capData[f]='';continue;}
+          const val=(r[ci]||'').trim();
           capData[f]=pS(val)||val;
-        });
+        }
         D.capSituation[yr.label]=capData;
         break;
       }
     }
     dbg(true,`Cap Situation: ${Object.keys(D.capSituation).length} years for ${TEAM}`);
-    for(const[yr,cap] of Object.entries(D.capSituation)){
-      const s=CAP_FIELDS.map(f=>`${f}=${typeof cap[f]==='number'?fS(cap[f]):cap[f]}`).join(', ');
-      dbg(true,`Cap ${yr}: ${s}`);
-    }
     }}
   // DRAFT - try multiple GIDs since sheet may have been reorganized
   const DRAFT_GIDS=['965849547','1908498377','1889032294'];
@@ -471,7 +444,7 @@ function renderCapSituation(D){
   const years=Object.keys(D.capSituation);
   if(!years.length)return'<div class="empty-msg">No salary cap data available</div>';
   const FIELDS=['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','PLAYERS','TWO-WAYS','GUARANTEED','NOT G'];
-  const MONEY_FIELDS=new Set(['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON','GUARANTEED','NOT G']);
+  const MONEY_FIELDS=new Set(['ACTIVE SALARIES','DEAD MONEY','CAP SPACE','TAX','1ST APRON','2ND APRON']);
   let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">';
   for(const yr of years){
     const cap=D.capSituation[yr];
@@ -479,17 +452,20 @@ function renderCapSituation(D){
     h+=`<div style="font-weight:700;font-size:.9rem;color:white;margin-bottom:.75rem;text-align:center">${yr}</div>`;
     for(const f of FIELDS){
       const val=cap[f];
+      if(val===''||val===undefined)continue; // skip unavailable fields
       const isMoney=MONEY_FIELDS.has(f);
-      const isNeg=typeof val==='number'&&val<0;
-      const isSpace=f==='CAP SPACE';
       let display='—';
       if(typeof val==='number'&&val!==0){
         display=fS(Math.abs(val));
-        if(isNeg)display='-'+display;
-      } else if(typeof val==='string'&&val)display=val;
+        if(val<0)display='-'+display;
+      } else if(typeof val==='number'&&val===0){
+        display=isMoney?'$0':'0';
+      } else if(typeof val==='string'&&val){
+        display=val;
+      }
       let color='white';
-      if(isSpace&&typeof val==='number'){color=val>=0?'#4caf50':'#ef5350';}
-      else if(f==='TAX'||f==='1ST APRON'||f==='2ND APRON'){color=typeof val==='number'&&val<0?'#ef5350':'#4caf50';}
+      if(f==='CAP SPACE'){color=typeof val==='number'?(val>=0?'#4caf50':'#ef5350'):'white';}
+      else if(f==='TAX'||f==='1ST APRON'||f==='2ND APRON'){color=typeof val==='number'?(val>0?'#4caf50':'#ef5350'):'white';}
       h+=`<div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.78rem">`;
       h+=`<span style="color:rgba(255,255,255,.7)">${f}</span>`;
       h+=`<span style="color:${color};font-weight:600">${display}</span>`;
